@@ -4,7 +4,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import type { PageId } from '@/components/layout/Sidebar';
-
+import { API_BASE_URL } from '@/lib/api';
 interface UploadZoneProps {
   label: string;
   description: string;
@@ -127,7 +127,55 @@ export function AnalyzePage({ onNavigate }: AnalyzePageProps) {
 
   const canAnalyze = animalId.trim() !== '' && (imageFile !== null || audioFile !== null);
 
-  return (
+const handleAnalyze = async () => {
+  if (!canAnalyze) return;
+
+  const formData = new FormData();
+
+  formData.append('animal_id', animalId.trim());
+  formData.append('species', species);
+
+  if (age.trim() !== '') {
+    formData.append('age', age);
+  }
+
+  if (imageFile) {
+    if (imageFile.type.startsWith('video/')) {
+      formData.append('video', imageFile);
+    } else {
+      formData.append('image', imageFile);
+    }
+  }
+
+  if (audioFile) {
+    formData.append('audio', audioFile);
+  }
+
+  formData.append('temperature', String(temperature));
+  formData.append('humidity', String(humidity));
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/analyze`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Analysis failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    console.log('Backend analysis result:', result);
+
+    onNavigate('processing');
+  } catch (error) {
+    console.error('Analysis error:', error);
+    alert('Unable to connect to the analysis server. Please try again.');
+  }
+};
+
+return (
     <div className="mx-auto max-w-5xl space-y-5">
       {/* Info banner */}
       <div className="flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3.5">
@@ -268,7 +316,7 @@ export function AnalyzePage({ onNavigate }: AnalyzePageProps) {
           icon={<ScanLine className="h-5 w-5" />}
           className="w-full max-w-md"
           disabled={!canAnalyze}
-          onClick={() => onNavigate('processing')}
+          onClick={handleAnalyze}
         >
           Analyze Animal
         </Button>
